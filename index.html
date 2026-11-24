@@ -10,6 +10,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@600;700;800&family=Prompt:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- เพิ่มไลบรารี heic2any สำหรับแปลงไฟล์ภาพ .HEIC จาก iPhone -->
+  <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
 
   <style>
     body { font-family: 'Prompt', sans-serif; }
@@ -29,7 +31,7 @@
           <span class="font-extrabold text-white text-base lg:text-lg tracking-wide">เขาวังเดลี่</span>
           <span class="text-[11px] px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-semibold">WebP Batch Studio</span>
         </div>
-        <p class="text-[11px] text-slate-400 hidden sm:block">ระบบแปลงไฟล์ภาพประกอบข่าวเป็น .webp คงสัดส่วนต้นฉบับ 100%</p>
+        <p class="text-[11px] text-slate-400 hidden sm:block">ระบบแปลงไฟล์ภาพประกอบข่าวเป็น .webp รองรับ JPG, PNG และ HEIC (iPhone)</p>
       </div>
     </div>
 
@@ -75,19 +77,25 @@
 
     <!-- DROP ZONE -->
     <div id="dropZone" class="border-2 border-dashed border-emerald-500/40 hover:border-emerald-400 bg-slate-900/50 hover:bg-slate-900/90 rounded-3xl p-8 sm:p-12 text-center transition cursor-pointer relative group">
-      <input type="file" id="fileInput" accept="image/jpeg,image/png,image/webp" multiple class="hidden">
+      <input type="file" id="fileInput" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.HEIC,.heif,.HEIF" multiple class="hidden">
       
       <div class="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center mx-auto mb-4 group-hover:scale-105 transition">
         <i data-lucide="images" class="w-8 h-8 text-emerald-400"></i>
       </div>
       
       <h2 class="text-base sm:text-lg font-bold text-white mb-1">คลิกเลือกรูปภาพ หรือ ลากไฟล์มาวางที่นี่</h2>
-      <p class="text-xs sm:text-sm text-slate-400 mb-5">รองรับไฟล์ JPG, PNG ครั้งละ 3–5 ภาพ หรือมากกว่านั้น (คงสัดส่วนภาพต้นฉบับ 100%)</p>
+      <p class="text-xs sm:text-sm text-slate-400 mb-5">รองรับไฟล์ JPG, PNG และ <strong class="text-emerald-300">HEIC (iPhone)</strong> ครั้งละหลายภาพ (คงสัดส่วนภาพต้นฉบับ 100%)</p>
       
       <label for="fileInput" class="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs sm:text-sm rounded-xl shadow-lg shadow-emerald-950/50 cursor-pointer active:scale-95 transition">
         <i data-lucide="folder-plus" class="w-4 h-4"></i>
         <span>เลือกรูปภาพจากเครื่อง</span>
       </label>
+    </div>
+
+    <!-- LOADING INDICATOR (สำหรับไฟล์ HEIC) -->
+    <div id="heicLoadingBox" class="hidden bg-amber-950/40 border border-amber-500/40 rounded-2xl p-4 flex items-center justify-center gap-3 text-xs sm:text-sm text-amber-200">
+      <i data-lucide="loader-2" class="w-5 h-5 text-amber-400 animate-spin"></i>
+      <span id="heicLoadingText">กำลังถอดรหัสไฟล์ HEIC จาก iPhone กรุณารอสักครู่...</span>
     </div>
 
     <!-- RESULTS SECTION -->
@@ -131,6 +139,8 @@
     const selectMaxWidth = document.getElementById('selectMaxWidth');
     const sliderQuality = document.getElementById('sliderQuality');
     const qualityVal = document.getElementById('qualityVal');
+    const heicLoadingBox = document.getElementById('heicLoadingBox');
+    const heicLoadingText = document.getElementById('heicLoadingText');
     const resultsSection = document.getElementById('resultsSection');
     const cardsGrid = document.getElementById('cardsGrid');
     const summaryTitle = document.getElementById('summaryTitle');
@@ -173,73 +183,109 @@
       summarySaved.textContent = `ลดขนาดไฟล์รวม ${formatBytes(savedBytes)} (เบาลง ${savedPct}%)`;
     }
 
-    function processFiles(fileList) {
-      const files = Array.from(fileList).filter(f => f.type.startsWith('image/'));
+    function isHeicFile(file) {
+      const name = file.name.toLowerCase();
+      return name.endsWith('.heic') || name.endsWith('.heif') || file.type === 'image/heic' || file.type === 'image/heif';
+    }
+
+    async function processFiles(fileList) {
+      const files = Array.from(fileList).filter(f => f.type.startsWith('image/') || isHeicFile(f));
       if (files.length === 0) return;
 
-      resultsSection.classList.remove('hidden');
       const maxWidth = parseInt(selectMaxWidth.value, 10);
       const quality = parseInt(sliderQuality.value, 10) / 100;
 
       let doneCount = 0;
 
-      files.forEach(file => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const img = new Image();
-          img.onload = () => {
-            let targetW = img.width;
-            let targetH = img.height;
+      for (const file of files) {
+        try {
+          let sourceBlob = file;
+          const originalSize = file.size;
+          const baseName = file.name.replace(/\.[^/.]+$/, "");
+          const wasHeic = isHeicFile(file);
 
-            // คงสัดส่วนเดิม 100%
-            if (maxWidth > 0 && targetW > maxWidth) {
-              const ratio = maxWidth / targetW;
-              targetW = maxWidth;
-              targetH = Math.round(img.height * ratio);
-            }
+          // หากเป็นไฟล์ HEIC จาก iPhone ให้แปลงเป็น JPEG Blob ก่อนด้วย heic2any
+          if (wasHeic) {
+            heicLoadingBox.classList.remove('hidden');
+            heicLoadingText.textContent = `กำลังถอดรหัสไฟล์ iPhone: ${file.name}...`;
+            const convertedBlob = await heic2any({
+              blob: file,
+              toType: 'image/jpeg',
+              quality: 0.95
+            });
+            sourceBlob = Array.isArray(convertedBlob) ? convertedBlob[0] : convertedBlob;
+          }
 
-            const canvas = document.createElement('canvas');
-            canvas.width = targetW;
-            canvas.height = targetH;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(img, 0, 0, targetW, targetH);
+          await new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+              const img = new Image();
+              img.onload = () => {
+                let targetW = img.width;
+                let targetH = img.height;
 
-            const webpUrl = canvas.toDataURL('image/webp', quality);
-            const base64Len = webpUrl.length - 'data:image/webp;base64,'.length;
-            const newSize = Math.round((base64Len * 3) / 4);
-            const baseName = file.name.replace(/\.[^/.]+$/, "");
-            const newName = `${baseName}.webp`;
+                // คงสัดส่วนเดิม 100%
+                if (maxWidth > 0 && targetW > maxWidth) {
+                  const ratio = maxWidth / targetW;
+                  targetW = maxWidth;
+                  targetH = Math.round(img.height * ratio);
+                }
 
-            const itemData = {
-              name: newName,
-              url: webpUrl,
-              origSize: file.size,
-              newSize: newSize,
-              dims: `${targetW} × ${targetH} px`
+                const canvas = document.createElement('canvas');
+                canvas.width = targetW;
+                canvas.height = targetH;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, targetW, targetH);
+
+                const webpUrl = canvas.toDataURL('image/webp', quality);
+                const base64Len = webpUrl.length - 'data:image/webp;base64,'.length;
+                const newSize = Math.round((base64Len * 3) / 4);
+                const newName = `${baseName}.webp`;
+
+                const itemData = {
+                  name: newName,
+                  url: webpUrl,
+                  origSize: originalSize,
+                  newSize: newSize,
+                  dims: `${targetW} × ${targetH} px`,
+                  isHeic: wasHeic
+                };
+
+                convertedItems.push(itemData);
+                resultsSection.classList.remove('hidden');
+                renderCard(itemData);
+                updateSummary();
+                doneCount++;
+                resolve();
+              };
+              img.src = e.target.result;
             };
+            reader.readAsDataURL(sourceBlob);
+          });
 
-            convertedItems.push(itemData);
-            renderCard(itemData);
-            updateSummary();
+        } catch (err) {
+          console.error('Error converting file:', file.name, err);
+          showToast(`ไม่สามารถแปลงไฟล์ ${file.name} ได้`);
+        }
+      }
 
-            doneCount++;
-            if (doneCount === files.length) {
-              showToast(`แปลงไฟล์ WebP สำเร็จ ${doneCount} ภาพ!`);
-            }
-          };
-          img.src = e.target.result;
-        };
-        reader.readAsDataURL(file);
-      });
+      heicLoadingBox.classList.add('hidden');
+      if (doneCount > 0) {
+        showToast(`แปลงไฟล์ WebP สำเร็จ ${doneCount} ภาพ!`);
+      }
     }
 
     function renderCard(item) {
       const card = document.createElement('div');
       card.className = "flex items-center gap-3 bg-slate-900 border border-slate-800 p-3 rounded-2xl shadow-sm";
+      const heicBadge = item.isHeic ? `<span class="ml-1.5 px-1.5 py-0.2 bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded text-[9px] font-semibold">HEIC</span>` : '';
+      
       card.innerHTML = `
         <img src="${item.url}" class="w-16 h-16 rounded-xl object-cover bg-slate-950 border border-slate-800 shrink-0" alt="preview">
         <div class="flex-1 min-w-0">
-          <div class="text-xs font-bold text-emerald-300 truncate" title="${item.name}">${item.name}</div>
+          <div class="text-xs font-bold text-emerald-300 truncate flex items-center" title="${item.name}">
+            <span class="truncate">${item.name}</span>${heicBadge}
+          </div>
           <div class="text-[11px] text-slate-400 mt-0.5">${item.dims}</div>
           <div class="text-[11px] text-slate-400 mt-0.5">
             <span class="line-through text-slate-500">${formatBytes(item.origSize)}</span> 
