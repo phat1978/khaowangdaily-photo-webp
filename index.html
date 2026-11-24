@@ -1,1 +1,312 @@
+<!DOCTYPE html>
+<html lang="th" class="h-full bg-slate-950">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>เขาวังเดลี่ WebP Studio - ระบบแปลงไฟล์ภาพความเร็วสูงสำหรับเว็บไซต์</title>
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@600;700;800&family=Prompt:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest"></script>
 
+  <style>
+    body { font-family: 'Prompt', sans-serif; }
+  </style>
+</head>
+<body class="min-h-full bg-slate-950 text-slate-100 flex flex-col antialiased selection:bg-emerald-600 selection:text-white">
+
+  <!-- HEADER -->
+  <header class="border-b border-slate-800 bg-slate-900/95 backdrop-blur sticky top-0 z-50 px-4 lg:px-8 py-3 flex items-center justify-between shadow-md">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-full bg-[#b31929] flex flex-col items-center justify-center shadow-lg text-white font-black leading-none p-1 border border-white/20 select-none shrink-0">
+        <span class="text-[9px] font-bold tracking-tighter" style="font-family:'Kanit', sans-serif;">เขาวัง</span>
+        <span class="text-[9px] font-bold tracking-tighter mt-[-1px]" style="font-family:'Kanit', sans-serif;">เดลี่</span>
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="font-extrabold text-white text-base lg:text-lg tracking-wide">เขาวังเดลี่</span>
+          <span class="text-[11px] px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-semibold">WebP Batch Studio</span>
+        </div>
+        <p class="text-[11px] text-slate-400 hidden sm:block">ระบบแปลงไฟล์ภาพประกอบข่าวเป็น .webp คงสัดส่วนต้นฉบับ 100%</p>
+      </div>
+    </div>
+
+    <a href="https://phat1978.github.io/khaowangdaily-cover/" target="_blank" class="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold rounded-xl text-slate-200 bg-slate-800 hover:bg-slate-750 border border-slate-700 transition">
+      <i data-lucide="layout-template" class="w-4 h-4 text-rose-400"></i>
+      <span>ไปหน้าสร้างปกข่าว</span>
+    </a>
+  </header>
+
+  <!-- MAIN CONTENT -->
+  <main class="flex-1 max-w-4xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
+
+    <!-- SETTINGS BAR -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-900/90 p-4 rounded-2xl border border-slate-800 shadow-lg">
+      <div>
+        <label class="text-xs font-bold text-slate-300 flex items-center gap-1.5 mb-2">
+          <i data-lucide="maximize-2" class="w-4 h-4 text-emerald-400"></i>
+          <span>ขนาดความกว้างสูงสุด (Max Width)</span>
+        </label>
+        <select id="selectMaxWidth" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs sm:text-sm text-emerald-300 focus:outline-none focus:border-emerald-500">
+          <option value="0" selected>คงขนาดพิกเซลเดิม 100% (Original)</option>
+          <option value="1920">ย่อความกว้างไม่เกิน 1920 px (Full HD)</option>
+          <option value="1600">ย่อความกว้างไม่เกิน 1600 px (แนะนำสำหรับเว็บข่าว)</option>
+          <option value="1200">ย่อความกว้างไม่เกิน 1200 px (โหลดไวพิเศษ)</option>
+        </select>
+      </div>
+
+      <div>
+        <div class="flex justify-between text-xs font-bold text-slate-300 mb-2">
+          <span class="flex items-center gap-1.5">
+            <i data-lucide="sliders" class="w-4 h-4 text-emerald-400"></i> คุณภาพไฟล์ (WebP Quality)
+          </span>
+          <span id="qualityVal" class="font-mono text-emerald-300">90%</span>
+        </div>
+        <input id="sliderQuality" type="range" min="60" max="100" step="5" value="90" class="w-full accent-emerald-500 h-2 bg-slate-800 rounded-lg cursor-pointer mt-1.5">
+        <div class="flex justify-between text-[10px] text-slate-500 mt-1">
+          <span>ไฟล์เล็กมาก (60%)</span>
+          <span>สมดุลคมชัด (90%)</span>
+          <span>สูงสุด (100%)</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- DROP ZONE -->
+    <div id="dropZone" class="border-2 border-dashed border-emerald-500/40 hover:border-emerald-400 bg-slate-900/50 hover:bg-slate-900/90 rounded-3xl p-8 sm:p-12 text-center transition cursor-pointer relative group">
+      <input type="file" id="fileInput" accept="image/jpeg,image/png,image/webp" multiple class="hidden">
+      
+      <div class="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center mx-auto mb-4 group-hover:scale-105 transition">
+        <i data-lucide="images" class="w-8 h-8 text-emerald-400"></i>
+      </div>
+      
+      <h2 class="text-base sm:text-lg font-bold text-white mb-1">คลิกเลือกรูปภาพ หรือ ลากไฟล์มาวางที่นี่</h2>
+      <p class="text-xs sm:text-sm text-slate-400 mb-5">รองรับไฟล์ JPG, PNG ครั้งละ 3–5 ภาพ หรือมากกว่านั้น (คงสัดส่วนภาพต้นฉบับ 100%)</p>
+      
+      <label for="fileInput" class="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs sm:text-sm rounded-xl shadow-lg shadow-emerald-950/50 cursor-pointer active:scale-95 transition">
+        <i data-lucide="folder-plus" class="w-4 h-4"></i>
+        <span>เลือกรูปภาพจากเครื่อง</span>
+      </label>
+    </div>
+
+    <!-- RESULTS SECTION -->
+    <div id="resultsSection" class="hidden space-y-4">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900 p-4 rounded-2xl border border-slate-800">
+        <div>
+          <h3 id="summaryTitle" class="text-sm font-bold text-white">แปลงไฟล์สำเร็จ 0 ภาพ</h3>
+          <p id="summarySaved" class="text-xs text-emerald-400 mt-0.5">ประหยัดพื้นที่รวม 0 KB</p>
+        </div>
+        
+        <div class="flex items-center gap-2">
+          <button id="btnClearList" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-750 text-slate-300 text-xs font-semibold rounded-xl border border-slate-700 transition">
+            ล้างรายการ
+          </button>
+          <button id="btnDownloadAll" class="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs sm:text-sm font-bold rounded-xl shadow-lg flex items-center gap-1.5 active:scale-95 transition">
+            <i data-lucide="download-cloud" class="w-4 h-4"></i>
+            <span>ดาวน์โหลดทั้งหมด</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- IMAGE CARDS GRID -->
+      <div id="cardsGrid" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <!-- รายการรูปภาพจะแสดงที่นี่ -->
+      </div>
+    </div>
+
+  </main>
+
+  <!-- TOAST -->
+  <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-900 border border-emerald-500/50 text-white px-4 py-2.5 rounded-2xl shadow-2xl flex items-center gap-2 text-xs font-medium opacity-0 pointer-events-none transition-all duration-300 z-50">
+    <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-400"></i>
+    <span id="toastText">ดำเนินการสำเร็จ</span>
+  </div>
+
+  <script>
+    lucide.createIcons();
+
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const selectMaxWidth = document.getElementById('selectMaxWidth');
+    const sliderQuality = document.getElementById('sliderQuality');
+    const qualityVal = document.getElementById('qualityVal');
+    const resultsSection = document.getElementById('resultsSection');
+    const cardsGrid = document.getElementById('cardsGrid');
+    const summaryTitle = document.getElementById('summaryTitle');
+    const summarySaved = document.getElementById('summarySaved');
+    const btnDownloadAll = document.getElementById('btnDownloadAll');
+    const btnClearList = document.getElementById('btnClearList');
+
+    let convertedItems = [];
+
+    sliderQuality.addEventListener('input', (e) => {
+      qualityVal.textContent = `${e.target.value}%`;
+    });
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      document.getElementById('toastText').textContent = msg;
+      toast.classList.remove('opacity-0', 'pointer-events-none');
+      toast.classList.add('opacity-100');
+      setTimeout(() => {
+        toast.classList.remove('opacity-100');
+        toast.classList.add('opacity-0', 'pointer-events-none');
+      }, 2800);
+    }
+
+    function formatBytes(bytes) {
+      if (bytes <= 0) return '0 B';
+      const k = 1024;
+      const sizes = ['B', 'KB', 'MB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+    }
+
+    function updateSummary() {
+      const totalOrig = convertedItems.reduce((acc, item) => acc + item.origSize, 0);
+      const totalNew = convertedItems.reduce((acc, item) => acc + item.newSize, 0);
+      const savedBytes = Math.max(0, totalOrig - totalNew);
+      const savedPct = totalOrig > 0 ? Math.round((savedBytes / totalOrig) * 100) : 0;
+
+      summaryTitle.textContent = `แปลงไฟล์สำเร็จ ${convertedItems.length} ภาพ`;
+      summarySaved.textContent = `ลดขนาดไฟล์รวม ${formatBytes(savedBytes)} (เบาลง ${savedPct}%)`;
+    }
+
+    function processFiles(fileList) {
+      const files = Array.from(fileList).filter(f => f.type.startsWith('image/'));
+      if (files.length === 0) return;
+
+      resultsSection.classList.remove('hidden');
+      const maxWidth = parseInt(selectMaxWidth.value, 10);
+      const quality = parseInt(sliderQuality.value, 10) / 100;
+
+      let doneCount = 0;
+
+      files.forEach(file => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const img = new Image();
+          img.onload = () => {
+            let targetW = img.width;
+            let targetH = img.height;
+
+            // คงสัดส่วนเดิม 100%
+            if (maxWidth > 0 && targetW > maxWidth) {
+              const ratio = maxWidth / targetW;
+              targetW = maxWidth;
+              targetH = Math.round(img.height * ratio);
+            }
+
+            const canvas = document.createElement('canvas');
+            canvas.width = targetW;
+            canvas.height = targetH;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, targetW, targetH);
+
+            const webpUrl = canvas.toDataURL('image/webp', quality);
+            const base64Len = webpUrl.length - 'data:image/webp;base64,'.length;
+            const newSize = Math.round((base64Len * 3) / 4);
+            const baseName = file.name.replace(/\.[^/.]+$/, "");
+            const newName = `${baseName}.webp`;
+
+            const itemData = {
+              name: newName,
+              url: webpUrl,
+              origSize: file.size,
+              newSize: newSize,
+              dims: `${targetW} × ${targetH} px`
+            };
+
+            convertedItems.push(itemData);
+            renderCard(itemData);
+            updateSummary();
+
+            doneCount++;
+            if (doneCount === files.length) {
+              showToast(`แปลงไฟล์ WebP สำเร็จ ${doneCount} ภาพ!`);
+            }
+          };
+          img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function renderCard(item) {
+      const card = document.createElement('div');
+      card.className = "flex items-center gap-3 bg-slate-900 border border-slate-800 p-3 rounded-2xl shadow-sm";
+      card.innerHTML = `
+        <img src="${item.url}" class="w-16 h-16 rounded-xl object-cover bg-slate-950 border border-slate-800 shrink-0" alt="preview">
+        <div class="flex-1 min-w-0">
+          <div class="text-xs font-bold text-emerald-300 truncate" title="${item.name}">${item.name}</div>
+          <div class="text-[11px] text-slate-400 mt-0.5">${item.dims}</div>
+          <div class="text-[11px] text-slate-400 mt-0.5">
+            <span class="line-through text-slate-500">${formatBytes(item.origSize)}</span> 
+            → <strong class="text-white">${formatBytes(item.newSize)}</strong>
+          </div>
+        </div>
+        <a href="${item.url}" download="${item.name}" class="shrink-0 p-2.5 bg-slate-800 hover:bg-emerald-600 text-slate-200 hover:text-white rounded-xl transition" title="ดาวน์โหลดไฟล์นี้">
+          <i data-lucide="download" class="w-4 h-4"></i>
+        </a>
+      `;
+      cardsGrid.appendChild(card);
+      lucide.createIcons();
+    }
+
+    // Events
+    dropZone.addEventListener('click', (e) => {
+      if (e.target.tagName !== 'LABEL' && e.target.tagName !== 'INPUT') {
+        fileInput.click();
+      }
+    });
+
+    fileInput.addEventListener('change', (e) => {
+      processFiles(e.target.files);
+      e.target.value = '';
+    });
+
+    ['dragenter', 'dragover'].forEach(evt => {
+      dropZone.addEventListener(evt, (e) => {
+        e.preventDefault();
+        dropZone.classList.add('border-emerald-400', 'bg-slate-900');
+      });
+    });
+
+    ['dragleave', 'drop'].forEach(evt => {
+      dropZone.addEventListener(evt, (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('border-emerald-400', 'bg-slate-900');
+      });
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      if (e.dataTransfer && e.dataTransfer.files) {
+        processFiles(e.dataTransfer.files);
+      }
+    });
+
+    btnDownloadAll.addEventListener('click', () => {
+      if (convertedItems.length === 0) return;
+      convertedItems.forEach((item, idx) => {
+        setTimeout(() => {
+          const a = document.createElement('a');
+          a.href = item.url;
+          a.download = item.name;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+        }, idx * 250);
+      });
+      showToast(`กำลังดาวน์โหลดทั้ง ${convertedItems.length} ไฟล์...`);
+    });
+
+    btnClearList.addEventListener('click', () => {
+      convertedItems = [];
+      cardsGrid.innerHTML = '';
+      resultsSection.classList.add('hidden');
+    });
+  </script>
+</body>
+</html>
